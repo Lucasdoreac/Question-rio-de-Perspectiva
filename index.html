@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mapeamento de Perspectiva — como você navega a era da sobrecarga</title>
+<meta name="description" content="Não é teste e não há resposta errada. Um mapa de como você processa um mundo complexo demais — seis dimensões, cada uma com o que dá e o que custa. Roda 100% no seu navegador.">
+<meta property="og:title" content="Mapeamento de Perspectiva">
+<meta property="og:description" content="Como você navega a era da sobrecarga. Sem nota, sem ranking, sem resposta errada.">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="pt_BR">
+<meta name="twitter:card" content="summary">
+<style>
+:root{
+  --bg:#faf8f5; --bg-elev:#ffffff; --fg:#16130f; --fg-dim:#544c43;
+  --line:#e0d9ce; --accent:#3a4a7a; --accent-soft:#e7eaf4;
+  --warn:#8a5a12; --warn-soft:#f6eddc;
+  --a:#7a3b5c; --b:#2f5d50;
+  --radius:10px; --measure:68ch;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#12100e; --bg-elev:#1b1815; --fg:#f0ebe4; --fg-dim:#b3a89c;
+    --line:#2e2924; --accent:#8fa3e0; --accent-soft:#181c2a;
+    --warn:#d9ac5c; --warn-soft:#2a2114;
+    --a:#d888ab; --b:#6fc0a5;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#12100e; --bg-elev:#1b1815; --fg:#f0ebe4; --fg-dim:#b3a89c;
+  --line:#2e2924; --accent:#8fa3e0; --accent-soft:#181c2a;
+  --warn:#d9ac5c; --warn-soft:#2a2114;
+  --a:#d888ab; --b:#6fc0a5;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}
+}
+body{
+  background:var(--bg);color:var(--fg);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  font-size:1.05rem;line-height:1.7;-webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:var(--measure);margin:0 auto;padding:0 22px}
+a{color:var(--accent)}
+a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
+.skip{position:absolute;left:-9999px;top:0;background:var(--accent);color:var(--bg);padding:12px 20px;font-weight:700;z-index:50}
+.skip:focus{left:0}
+
+header{padding:60px 0 36px;border-bottom:1px solid var(--line)}
+.kicker{font-size:.78rem;letter-spacing:.14em;text-transform:uppercase;color:var(--fg-dim);margin-bottom:14px}
+h1{font-size:clamp(1.8rem,5vw,2.5rem);line-height:1.2;letter-spacing:-.02em;margin-bottom:14px}
+.sub{font-size:1.1rem;color:var(--fg-dim)}
+
+h2{font-size:1.35rem;line-height:1.3;margin:44px 0 12px}
+h3{font-size:1.08rem;margin:26px 0 8px}
+p{margin-bottom:15px}
+ul{padding-left:22px;margin-bottom:15px}
+li{margin-bottom:8px}
+
+.box{border-radius:var(--radius);padding:20px 22px;margin:24px 0;border:1px solid var(--line);background:var(--bg-elev)}
+.box.accent{border-left:4px solid var(--accent);background:var(--accent-soft)}
+.box.warn{border-left:4px solid var(--warn);background:var(--warn-soft)}
+.box :last-child{margin-bottom:0}
+
+.btn{
+  display:inline-block;padding:13px 26px;border-radius:99px;border:1px solid var(--accent);
+  background:var(--accent);color:var(--bg);font:inherit;font-weight:700;cursor:pointer;
+}
+.btn:hover{opacity:.88}
+.btn.ghost{background:transparent;color:var(--accent)}
+.btn[disabled]{opacity:.4;cursor:not-allowed}
+.acoes{display:flex;gap:10px;flex-wrap:wrap;margin-top:26px}
+
+/* ---- questionário ---- */
+#quiz{display:none;padding-top:34px}
+.progresso{margin:0 0 26px}
+.barra{height:6px;background:var(--line);border-radius:99px;overflow:hidden}
+.barra span{display:block;height:100%;background:var(--accent);width:0;transition:width .25s ease}
+.progresso p{font-size:.86rem;color:var(--fg-dim);margin:8px 0 0}
+
+fieldset{border:0}
+legend{font-size:1.12rem;line-height:1.45;font-weight:600;margin-bottom:6px}
+.dim-tag{
+  display:inline-block;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--fg-dim);border:1px solid var(--line);border-radius:99px;padding:2px 10px;margin-bottom:14px;
+}
+.opcoes{display:flex;flex-direction:column;gap:8px;margin-top:16px}
+.opcao{
+  display:flex;align-items:flex-start;gap:12px;padding:14px 16px;cursor:pointer;
+  background:var(--bg-elev);border:1px solid var(--line);border-radius:var(--radius);
+}
+.opcao:hover{border-color:var(--accent)}
+.opcao input{margin-top:5px;flex:0 0 auto;accent-color:var(--accent);width:18px;height:18px}
+.opcao:has(input:checked){border-color:var(--accent);background:var(--accent-soft)}
+
+/* ---- resultado ---- */
+#resultado{display:none;padding-top:34px}
+.dim{
+  background:var(--bg-elev);border:1px solid var(--line);border-radius:var(--radius);
+  padding:22px;margin:20px 0;
+}
+.dim h3{margin:0 0 4px}
+.dim .polos{display:flex;justify-content:space-between;gap:12px;font-size:.8rem;color:var(--fg-dim);margin-bottom:6px}
+.dim .polos b{font-weight:700}
+.escala{position:relative;height:8px;background:linear-gradient(90deg,var(--a),var(--line) 50%,var(--b));border-radius:99px;margin-bottom:16px}
+.marca{
+  position:absolute;top:50%;width:16px;height:16px;border-radius:50%;
+  background:var(--bg);border:3px solid var(--fg);transform:translate(-50%,-50%);
+}
+.leitura{font-size:.97rem}
+.leitura p{margin-bottom:10px}
+.custo{
+  border-left:3px solid var(--warn);padding:2px 0 2px 14px;margin-top:12px;
+  font-size:.93rem;color:var(--fg-dim);
+}
+.custo b{color:var(--fg)}
+
+footer{margin-top:56px;padding:32px 0 60px;border-top:1px solid var(--line);color:var(--fg-dim);font-size:.92rem}
+.fontes{font-size:.9rem}
+.fontes li{margin-bottom:10px}
+</style>
+</head>
+<body>
+<a class="skip" href="#conteudo">Pular para o conteúdo</a>
+
+<header>
+  <div class="wrap">
+    <p class="kicker">Mapeamento de perspectiva</p>
+    <h1>Como você navega a era da sobrecarga</h1>
+    <p class="sub">
+      Isto não é um teste. Não há resposta certa, não há pontuação, e ninguém sai daqui melhor
+      ou pior que ninguém.
+    </p>
+  </div>
+</header>
+
+<main class="wrap" id="conteudo">
+
+  <section id="intro">
+    <div class="box accent">
+      <p>
+        O mundo produz mais informação do que qualquer pessoa consegue processar. Diante disso,
+        <strong>todo mundo desenvolve estratégias</strong> — filtrar, mergulhar, adiar, delegar,
+        desligar. Nenhuma delas é burrice nem fraqueza: são respostas razoáveis a um volume que
+        não foi feito para caber em ninguém.
+      </p>
+      <p>
+        Este questionário mapeia <strong>quais são as suas</strong>. No fim você recebe uma
+        descrição, não uma nota — e cada posição vem com as duas coisas: o que ela te dá e o que
+        ela costuma custar.
+      </p>
+    </div>
+
+    <h2>Como funciona</h2>
+    <ul>
+      <li><strong>24 afirmações</strong>, cerca de 6 minutos.</li>
+      <li>Você marca o quanto cada uma descreve você. <strong>Não existe alternativa boa ou ruim.</strong></li>
+      <li>O resultado é um mapa em <strong>seis dimensões</strong>, cada uma com dois polos legítimos.</li>
+      <li><strong>Nada sai do seu navegador.</strong> Não há servidor, conta, cookie ou envio de dados.</li>
+    </ul>
+
+    <div class="box warn">
+      <p>
+        <strong>O que isto não é:</strong> não é instrumento psicométrico validado, não mede
+        inteligência, não diagnostica nada e não prevê nada sobre você. É uma ferramenta de
+        reflexão construída a partir de construtos que a pesquisa estuda — as fontes estão no fim
+        da página.
+      </p>
+    </div>
+
+    <div class="acoes">
+      <button class="btn" id="comecar">Começar o mapeamento</button>
+    </div>
+  </section>
+
+  <section id="quiz" aria-live="polite">
+    <div class="progresso">
+      <div class="barra"><span id="barra"></span></div>
+      <p id="contador"></p>
+    </div>
+    <form id="form">
+      <fieldset>
+        <span class="dim-tag" id="dimtag"></span>
+        <legend id="pergunta"></legend>
+        <div class="opcoes" id="opcoes"></div>
+      </fieldset>
+    </form>
+    <div class="acoes">
+      <button class="btn ghost" id="voltar">← Voltar</button>
+    </div>
+  </section>
+
+  <section id="resultado">
+    <h2>Seu mapa</h2>
+    <p>
+      Cada linha é uma dimensão, e a bolinha marca onde suas respostas te colocam. Os dois lados
+      são posições legítimas — <strong>o meio não é o certo, e os extremos não são o errado</strong>.
+    </p>
+    <div id="mapa"></div>
+
+    <div class="box accent">
+      <p>
+        <strong>Se o mapa não parecer com você, ele está errado — não você.</strong> Vinte e quatro
+        frases não alcançam uma pessoa. Use o que ressoou, descarte o resto.
+      </p>
+    </div>
+
+    <div class="acoes">
+      <button class="btn ghost" id="refazer">Refazer</button>
+    </div>
+  </section>
+
+  <section id="fontes-sec">
+    <h2>Em que isto se apoia</h2>
+    <p>
+      As dimensões não foram inventadas: cada uma parte de algo que a pesquisa mede. O que
+      <strong>não</strong> foi validado é este questionário — o agrupamento, as frases e os cortes
+      são construção deste projeto.
+    </p>
+    <ul class="fontes">
+      <li>
+        <strong>Necessidade de fechamento cognitivo</strong> — Kruglanski &amp; Webster (1996)
+        descreveram a tendência a buscar resposta firme e a aversão à ambiguidade, com dimensões de
+        previsibilidade, ordem, desconforto com ambiguidade, decisão e fechamento.
+        <a href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8795760/" target="_blank" rel="noopener">Sobre a escala (PMC)</a>
+      </li>
+      <li>
+        <strong>Evitação de notícias</strong> — o <em>Digital News Report 2025</em> do Reuters
+        Institute registra que <strong>40% das pessoas evitam notícias às vezes ou com frequência</strong>,
+        contra 29% em 2017. Os motivos mais citados: impacto no humor (39%), sensação de sobrecarga
+        (31%), excesso de conflito (30%) e impotência diante do que se lê (20%).
+        <a href="https://reutersinstitute.politics.ox.ac.uk/digital-news-report/2025/dnr-executive-summary" target="_blank" rel="noopener">Reuters Institute</a>
+      </li>
+      <li>
+        <strong><em>Doomscrolling</em> e consumo problemático de notícias</strong> — consumo
+        repetitivo e difícil de interromper de conteúdo negativo, associado na literatura a menor
+        satisfação com a vida e mais ansiedade.
+        <a href="https://jsomer.org/index.php/pub/article/view/102" target="_blank" rel="noopener">Revisão de escopo</a>
+      </li>
+    </ul>
+    <div class="box warn">
+      <p>
+        Repare que os dois polos extremos têm custo documentado: quem evita demais perde
+        informação que precisaria ter, e quem mergulha demais paga em ansiedade. <strong>Isso não
+        torna o meio virtuoso</strong> — torna cada posição uma escolha com consequência, que é
+        coisa diferente.
+      </p>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>
+      Escrito em agosto de 2026. Faz parte de um acervo sobre raça, classe, gênero e alienação —
+      <a href="https://lucasdoreac.github.io/">lucasdoreac.github.io</a>.
+    </p>
+    <p>
+      Correções por
+      <a href="https://github.com/Lucasdoreac/Question-rio-de-Perspectiva/issues" target="_blank" rel="noopener">issue</a>.
+    </p>
+  </div>
+</footer>
+
+<script>
+// ---------------------------------------------------------------------------
+// Seis dimensões. Cada uma tem dois polos LEGÍTIMOS — nunca um certo e um errado.
+// "sinal" indica para qual polo a concordância empurra: -1 puxa para A, +1 para B.
+// ---------------------------------------------------------------------------
+const DIMENSOES = [
+  {
+    id: 'incerteza',
+    nome: 'Diante da incerteza',
+    a: 'Busca fechar',
+    b: 'Tolera o aberto',
+    leitura: {
+      a: 'Você prefere chegar a uma conclusão a ficar com a pergunta aberta. Decide, fecha o assunto e segue.',
+      meio: 'Você fecha algumas questões e deixa outras em aberto, conforme o custo de errar.',
+      b: 'Você consegue conviver com "ainda não sei" por bastante tempo sem que isso te incomode.'
+    },
+    custo: {
+      a: 'Fechar cedo economiza energia — e às vezes fecha antes de a informação relevante chegar.',
+      meio: 'Escolher caso a caso é flexível — e exige decidir toda vez, o que também cansa.',
+      b: 'Aguentar o aberto evita conclusão precipitada — e pode virar adiamento de decisões que precisavam ser tomadas.'
+    }
+  },
+  {
+    id: 'volume',
+    nome: 'Diante do volume',
+    a: 'Mergulha',
+    b: 'Filtra',
+    leitura: {
+      a: 'Quando um assunto te pega, você vai fundo: várias fontes, muito tempo, até sentir que entendeu.',
+      meio: 'Você mergulha no que considera essencial e mantém o resto à distância.',
+      b: 'Você limita ativamente o quanto entra — corta fonte, silencia assunto, define horário.'
+    },
+    custo: {
+      a: 'Mergulhar constrói profundidade real — e a literatura sobre consumo problemático de notícias mostra que, sem freio, cobra em ansiedade e sono.',
+      meio: 'Selecionar preserva energia — desde que a régua do "essencial" seja revista de vez em quando.',
+      b: 'Filtrar protege o funcionamento diário — e o Reuters Institute registra que evitação alta costuma vir junto de sensação de impotência, que ela mesma alimenta.'
+    }
+  },
+  {
+    id: 'conflito',
+    nome: 'Diante do conflito',
+    a: 'Aproxima',
+    b: 'Afasta',
+    leitura: {
+      a: 'Divergência te atrai: você entra na discussão, quer entender o argumento do outro lado, discute.',
+      meio: 'Você escolhe as brigas — entra em algumas, sai de outras.',
+      b: 'Você evita atrito. Prefere não discutir, muda de assunto, sai da conversa.'
+    },
+    custo: {
+      a: 'Encarar divergência expõe você a argumento que não teria encontrado sozinho — e consome muita energia, sobretudo quando o outro lado não está de boa-fé.',
+      meio: 'Escolher onde gastar é sustentável — desde que o critério não seja só evitar desconforto.',
+      b: 'Preservar-se do atrito protege — e cobra em bolha: você deixa de ouvir o que discorda de você.'
+    }
+  },
+  {
+    id: 'orientacao',
+    nome: 'De onde vem a orientação',
+    a: 'Da própria análise',
+    b: 'De quem você confia',
+    leitura: {
+      a: 'Você prefere avaliar por conta própria antes de aceitar. Quer ver o dado, checar a fonte.',
+      meio: 'Você combina as duas coisas conforme o assunto e o quanto domina dele.',
+      b: 'Você se apoia em pessoas e veículos que já provaram merecer confiança, e economiza a checagem.'
+    },
+    custo: {
+      a: 'Verificar sozinho dá autonomia — e é impossível fazer isso com tudo; ninguém tem repertório para todos os campos.',
+      meio: 'Alternar é realista — exige saber onde você é leigo, que é justamente o mais difícil de enxergar.',
+      b: 'Delegar confiança é eficiente e inevitável — e a qualidade do que você sabe passa a depender de quem você escolheu.'
+    }
+  },
+  {
+    id: 'ritmo',
+    nome: 'Ritmo',
+    a: 'Tempo real',
+    b: 'Deixa decantar',
+    leitura: {
+      a: 'Você quer saber enquanto acontece. Acompanha o desenrolar.',
+      meio: 'Você acompanha alguns temas ao vivo e deixa outros amadurecerem.',
+      b: 'Você prefere saber depois, quando a poeira baixou e dá para ver o que sobrou.'
+    },
+    custo: {
+      a: 'Estar perto do agora dá presença — e a primeira versão de qualquer história costuma ser a mais errada.',
+      meio: 'Ter dois ritmos é útil — e exige decidir o que merece qual, o que nem sempre é óbvio na hora.',
+      b: 'Esperar melhora muito a qualidade do que chega — e há decisões que não esperam.'
+    }
+  },
+  {
+    id: 'agencia',
+    nome: 'Sensação de agência',
+    a: 'Foco no alcance',
+    b: 'Foco na estrutura',
+    leitura: {
+      a: 'Você se concentra no que está ao seu alcance — o que dá para fazer hoje, perto de você.',
+      meio: 'Você transita entre o que dá para fazer e o que precisaria mudar de fundo.',
+      b: 'Você enxerga o problema estrutural inteiro, mesmo quando não há ação individual à altura.'
+    },
+    custo: {
+      a: 'Agir no alcançável sustenta a saúde e produz efeito real — e pode deixar a causa de fundo intocada.',
+      meio: 'Ver os dois planos é a posição mais completa — e a mais cansativa de manter.',
+      b: 'Enxergar a estrutura é o que torna a crítica possível — e, sem caminho de ação, é a via mais curta para a paralisia. O Reuters Institute lista impotência entre os motivos de quem desliga.'
+    }
+  }
+];
+
+const PERGUNTAS = [
+  { d:'incerteza', s:-1, t:'Fico desconfortável quando um assunto importante fica sem conclusão.' },
+  { d:'incerteza', s:-1, t:'Prefiro uma resposta imperfeita agora a uma resposta boa daqui a semanas.' },
+  { d:'incerteza', s: 1, t:'Consigo dizer "ainda não tenho opinião formada" sem que isso me incomode.' },
+  { d:'incerteza', s: 1, t:'Costumo suspender o julgamento quando percebo que me falta informação.' },
+
+  { d:'volume',    s:-1, t:'Quando um assunto me pega, eu leio muito sobre ele, de várias fontes.' },
+  { d:'volume',    s:-1, t:'Já perdi noites ou horas de trabalho acompanhando algum acontecimento.' },
+  { d:'volume',    s: 1, t:'Limito de propósito quanta notícia entra no meu dia.' },
+  { d:'volume',    s: 1, t:'Silencio, deixo de seguir ou evito assuntos que me fazem mal.' },
+
+  { d:'conflito',  s:-1, t:'Costumo entrar em discussões quando discordo de algo.' },
+  { d:'conflito',  s:-1, t:'Procuro entender o argumento de quem pensa muito diferente de mim.' },
+  { d:'conflito',  s: 1, t:'Prefiro não discutir política com pessoas próximas.' },
+  { d:'conflito',  s: 1, t:'Quando a conversa esquenta, eu costumo sair dela.' },
+
+  { d:'orientacao',s:-1, t:'Antes de aceitar uma informação, gosto de checar a fonte original.' },
+  { d:'orientacao',s:-1, t:'Desconfio de conclusões que não consigo verificar por conta própria.' },
+  { d:'orientacao',s: 1, t:'Tenho pessoas ou veículos cuja opinião eu adoto sem precisar conferir.' },
+  { d:'orientacao',s: 1, t:'Confio na avaliação de quem entende mais do assunto do que eu.' },
+
+  { d:'ritmo',     s:-1, t:'Gosto de acompanhar os acontecimentos enquanto eles se desenrolam.' },
+  { d:'ritmo',     s:-1, t:'Sinto necessidade de saber das coisas no dia em que acontecem.' },
+  { d:'ritmo',     s: 1, t:'Prefiro ler sobre um acontecimento dias depois, com mais contexto.' },
+  { d:'ritmo',     s: 1, t:'Acho que a primeira versão de uma notícia costuma estar errada.' },
+
+  { d:'agencia',   s:-1, t:'Prefiro concentrar energia no que consigo mudar perto de mim.' },
+  { d:'agencia',   s:-1, t:'Ações pequenas e concretas me parecem mais úteis que grandes análises.' },
+  { d:'agencia',   s: 1, t:'Costumo enxergar a causa estrutural por trás dos problemas do dia.' },
+  { d:'agencia',   s: 1, t:'Às vezes sinto que nada que eu faça individualmente altera o quadro.' }
+];
+
+const ESCALA = [
+  { v:1, r:'Não tem nada a ver comigo' },
+  { v:2, r:'Pouco parecido comigo' },
+  { v:3, r:'Mais ou menos' },
+  { v:4, r:'Bastante parecido comigo' },
+  { v:5, r:'É exatamente eu' }
+];
+
+const respostas = new Array(PERGUNTAS.length).fill(null);
+let atual = 0;
+
+const $ = id => document.getElementById(id);
+
+function mostrar(secao){
+  ['intro','quiz','resultado'].forEach(s => { $(s).style.display = 'none'; });
+  $(secao).style.display = 'block';
+}
+
+function render(){
+  const p = PERGUNTAS[atual];
+  const dim = DIMENSOES.find(d => d.id === p.d);
+  $('dimtag').textContent = dim.nome;
+  $('pergunta').textContent = p.t;
+  $('contador').textContent = `Afirmação ${atual + 1} de ${PERGUNTAS.length}`;
+  $('barra').style.width = ((atual) / PERGUNTAS.length * 100) + '%';
+  $('voltar').disabled = atual === 0;
+
+  $('opcoes').innerHTML = '';
+  ESCALA.forEach(op => {
+    const lab = document.createElement('label');
+    lab.className = 'opcao';
+    const inp = document.createElement('input');
+    inp.type = 'radio'; inp.name = 'r'; inp.value = op.v;
+    if (respostas[atual] === op.v) inp.checked = true;
+    inp.addEventListener('change', () => {
+      respostas[atual] = op.v;
+      // pequena pausa para a marcação ser vista antes de avançar
+      setTimeout(avancar, 180);
+    });
+    const span = document.createElement('span');
+    span.textContent = op.r;
+    lab.appendChild(inp); lab.appendChild(span);
+    $('opcoes').appendChild(lab);
+  });
+  const primeiro = $('opcoes').querySelector('input');
+  if (primeiro) primeiro.focus();
+}
+
+function avancar(){
+  if (atual < PERGUNTAS.length - 1){ atual++; render(); }
+  else { calcular(); }
+}
+
+function calcular(){
+  const mapa = $('mapa');
+  mapa.innerHTML = '';
+
+  DIMENSOES.forEach(dim => {
+    const idx = PERGUNTAS.map((p,i) => p.d === dim.id ? i : -1).filter(i => i >= 0);
+    // cada item vale de -2 a +2 conforme concordância e sinal; média normalizada em 0..100
+    let soma = 0;
+    idx.forEach(i => {
+      const v = respostas[i] === null ? 3 : respostas[i];
+      soma += (v - 3) * PERGUNTAS[i].s;
+    });
+    const media = soma / idx.length;              // -2 .. +2
+    const pos = Math.max(0, Math.min(100, (media + 2) / 4 * 100));
+
+    let zona = 'meio';
+    if (pos < 38) zona = 'a';
+    else if (pos > 62) zona = 'b';
+
+    const el = document.createElement('div');
+    el.className = 'dim';
+    el.innerHTML =
+      '<h3></h3>' +
+      '<div class="polos"><b class="pa"></b><b class="pb"></b></div>' +
+      '<div class="escala"><div class="marca"></div></div>' +
+      '<div class="leitura"><p class="lt"></p><div class="custo"></div></div>';
+    el.querySelector('h3').textContent = dim.nome;
+    el.querySelector('.pa').textContent = dim.a;
+    el.querySelector('.pb').textContent = dim.b;
+    el.querySelector('.marca').style.left = pos + '%';
+    el.querySelector('.lt').textContent = dim.leitura[zona];
+    const custo = el.querySelector('.custo');
+    custo.innerHTML = '<b>O que dá e o que custa:</b> ';
+    custo.appendChild(document.createTextNode(dim.custo[zona]));
+    mapa.appendChild(el);
+  });
+
+  $('barra').style.width = '100%';
+  mostrar('resultado');
+  $('resultado').scrollIntoView({ block:'start' });
+}
+
+$('comecar').addEventListener('click', () => { mostrar('quiz'); render(); });
+$('voltar').addEventListener('click', () => { if (atual > 0){ atual--; render(); } });
+$('refazer').addEventListener('click', () => {
+  respostas.fill(null); atual = 0; mostrar('intro');
+  window.scrollTo({ top:0 });
+});
+</script>
+</body>
+</html>
